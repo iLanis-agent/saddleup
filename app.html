@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaddleUp - bike frame size and saddle height</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#1d1a18; color:#f3ede6; line-height:1.5; }
+  .wrap { max-width:700px; margin:0 auto; padding:26px 16px 50px; }
+  h1 { font-size:28px; } h1 span { color:#ff9a5c; }
+  .sub { color:#b5aa9c; margin:6px 0 16px; }
+  .card { background:#2b2623; border-radius:14px; padding:14px; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  label { font-size:12px; color:#b5aa9c; display:block; margin-bottom:3px; }
+  input,select { width:100%; background:#1d1a18; color:#f3ede6; border:1px solid #574f48; border-radius:8px; padding:8px; font-size:15px; font-family:inherit; }
+  button { background:#4a3d35; color:#f3ede6; border:0; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:14px; margin-right:6px; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; } td,th { text-align:left; padding:8px 4px; border-bottom:1px solid #433c36; } th { font-size:12px; color:#b5aa9c; font-weight:600; }
+  td.v { font-size:22px; font-weight:800; color:#ff9a5c; } tr.me td.v { color:#f3ede6; }
+  .stats { display:flex; gap:22px; flex-wrap:wrap; margin-top:12px; } .stats b { display:block; font-size:20px; } .muted { color:#b5aa9c; font-size:13px; }
+  .err { color:#ff9c8a; } .note { font-size:12.5px; color:#8c8174; margin-top:6px; }
+
+  td.v { font-size:20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Saddle<span>Up</span></h1>
+  <div class="sub">Frame size and saddle height from one measurement: your cycling inseam.</div>
+  <div class="card">
+    <div class="grid">
+      <div><label>Cycling inseam</label><input id="v" value="80"></div>
+      <div><label>Unit</label><select id="unit"><option value="cm">cm</option><option value="in">inches</option></select></div>
+      <div><label>Bike</label><select id="type"><option value="road">Road, gravel or touring</option><option value="hybrid">City or hybrid</option><option value="mtb">Mountain</option></select></div>
+      <div><label>Riding style (road only)</label><select id="style"><option value="comfort">Comfort (+2 cm)</option><option value="standard" selected>Standard</option><option value="aggressive">Aggressive (-2 cm)</option></select></div>
+    </div>
+    <button id="p1">80 cm road</button><button id="p2">74 cm road</button><button id="p3">31.5 in mountain</button>
+  </div>
+  <div class="card" id="out"></div>
+  <div class="note">Measure your inseam barefoot with a book snug between your legs like a saddle, floor to the top of the spine. Sources: OPTSC "Basics of bike fitting" (LeMond formulas: frame = inseam x 0.67, saddle height = inseam x 0.883), SizeGraf (hybrid = x 0.67 - 7, mountain = x 0.67 - 10, comfort +2 cm, aggressive -2 cm), PedalPrimer (80 cm worked example). Saddle height is measured from the centre of the bottom bracket to the top of the saddle along the seat tube. This is a starting point, not a bike fit: crank length, shoes, cleats and flexibility move it by a centimetre or two. Sloping top tubes make frame size a soft number, so check reach and standover when you test ride. Runs in your browser, nothing stored.</div>
+</div>
+<script src="engine.js"></script>
+<script>
+(function () {
+  var S = window.SaddleUp, $ = function (i) { return document.getElementById(i); };
+  function f(x, d) { return x.toFixed(d); }
+  function render() {
+    var t = $('type').value; $('style').disabled = !S.TYPES[t].style;
+    var a = S.analyze(parseFloat($('v').value), $('unit').value, t, $('style').value);
+    if (!a) { $('out').innerHTML = '<div class="err">Enter an inseam between 55 and 105 cm (21.7 to 41.3 in).</div>'; return; }
+    $('out').innerHTML = '<table><tr><th>Result</th><th>cm</th><th>inches</th></tr>' +
+      '<tr><td>Saddle height (bottom bracket to saddle top)</td><td class="v">' + f(a.saddleCm, 1) + '</td><td class="v">' + f(a.saddleIn, 1) + '</td></tr>' +
+      '<tr><td>Frame size (seat tube, centre to top)</td><td class="v">' + f(a.frameCm, 1) + '</td><td class="v">' + f(a.frameIn, 1) + '</td></tr></table>' +
+      '<div class="stats"><div><span class="muted">Nearest whole size</span><b>' + a.frameRound + ' cm</b></div><div><span class="muted">Your inseam</span><b>' + f(a.inseamCm, 1) + ' cm</b></div></div>' +
+      (t === 'road' ? '<div class="note">The original LeMond formula used 0.65 and measured centre to centre: ' + f(a.oldFrameCm, 1) + ' cm for your inseam.</div>' : '<div class="note">Mountain and hybrid sizes come from the SizeGraf formulas. Brands size mountain bikes differently, so check the maker chart.</div>');
+  }
+  function set(v, u, t) { $('v').value = v; $('unit').value = u; $('type').value = t; render(); }
+  ['v'].forEach(function (i) { $(i).oninput = render; }); ['type', 'style'].forEach(function (i) { $(i).onchange = render; });
+  $('unit').onchange = function () { var v = parseFloat($('v').value); if (isFinite(v)) { $('v').value = this.value === 'in' ? (v / 2.54).toFixed(1) : (v * 2.54).toFixed(1); } render(); };
+  $('p1').onclick = function () { set(80, 'cm', 'road'); }; $('p2').onclick = function () { set(74, 'cm', 'road'); }; $('p3').onclick = function () { set(31.5, 'in', 'mtb'); };
+  render();
+})();
+</script>
+</body>
+</html>
